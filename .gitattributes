@@ -1,0 +1,18 @@
+# Ignore build folders, generated files, and venv from GitHub language stats
+build/** linguist-vendored
+cmake/** linguist-vendored
+CMakeLists.txt linguist-generated
+Makefile linguist-generated
+*.so linguist-generated
+*.dll linguist-generated
+*.exe linguist-generated
+*.bin linguist-generated
+
+# Python virtual env
+.venv/** linguist-vendored
+env/** linguist-vendored
+
+# Android build
+android_app/.gradle/** linguist-vendored
+android_app/build/** linguist-vendored
+android_app/.idea/** linguist-vendored
