@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -6,6 +7,7 @@ import tempfile
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(static_image_mode=True)
@@ -64,4 +66,4 @@ def analyze_pose():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5001)
