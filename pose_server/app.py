@@ -1,69 +1,50 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS  
+from flask_cors import CORS
 import cv2
 import numpy as np
-import mediapipe as mp
-import tempfile
-import os
+
+# 파일명에 맞게 수정됨
+from .pose_util import analyze_pose_and_feedback  
 
 app = Flask(__name__)
 CORS(app)
 
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(static_image_mode=True)
-
-
-def calculate_angle(a, b, c):
-    a = np.array([a.x, a.y])
-    b = np.array([b.x, b.y])
-    c = np.array([c.x, c.y])
-
-    ba = a - b
-    bc = c - b
-
-    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
-    angle = np.arccos(np.clip(cosine_angle, -1.0, 1.0))
-    return np.degrees(angle)
-
-
 @app.route("/analyze_pose", methods=["POST"])
 def analyze_pose():
+    resp_format = request.args.get("format", "simple")  # simple | full
+    mode = request.args.get("mode")
+
     if 'image' not in request.files:
-        return jsonify({"error": "No image provided"}), 400
+        return jsonify({"ok": False, "message": "No image provided"}), 400
 
     file = request.files['image']
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-        file.save(temp_file.name)
-        image_path = temp_file.name
+    file_bytes = np.frombuffer(file.read(), np.uint8)
+    image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if image is None:
+        return jsonify({"ok": False, "message": "Invalid image"}), 400
 
-    image = cv2.imread(image_path)
-    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = pose.process(image_rgb)
+    result = analyze_pose_and_feedback(image_bgr=image)
+    if not result.get("ok"):
+        if resp_format == "simple":
+            return jsonify({"pose": "unknown", "feedback": "자세를 인식할 수 없습니다.", "score": 0}), 200
+        return jsonify(result), 400
 
-    os.remove(image_path)
+    if resp_format == "full":
+        return jsonify(result), 200
 
-    if not results.pose_landmarks:
-        return jsonify({
-            "pose": "unknown",
-            "feedback": "자세를 인식할 수 없습니다.",
-            "score": 0
-        })
-
-    landmarks = results.pose_landmarks.landmark
-    hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
-    knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
-    ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
-
-    angle = calculate_angle(hip, knee, ankle)
-    feedback = "좋은 스쿼트입니다!" if 80 <= angle <= 100 else "무릎을 더 굽히세요."
-    score = int(100 - abs(angle - 90))
-
+    # simple 포맷
+    feedback_list = result.get("feedback", [])
+    penalty = min(len([f for f in feedback_list if "좋습니다" not in f and "안정적" not in f]) * 5, 30)
+    score = max(50, 80 - penalty)
     return jsonify({
-        "pose": "squat",
-        "feedback": feedback,
+        "pose": mode if mode else "squat",
+        "feedback": feedback_list[0] if feedback_list else "기본 자세가 전반적으로 안정적입니다.",
         "score": score
-    })
+    }), 200
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return jsonify({"ok": True, "service": "PoseCoach-Python-Server", "port": 5001, "version": "v0.2"}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)

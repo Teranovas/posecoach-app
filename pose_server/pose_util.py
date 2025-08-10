@@ -1,4 +1,3 @@
-# pose_server/pose_utils.py
 from typing import Dict, Any, List, Tuple
 import mediapipe as mp
 import cv2
@@ -26,7 +25,7 @@ def _torso_incline_deg(shoulder: Tuple[float, float], hip: Tuple[float, float]) 
     vx = shoulder[0] - hip[0]
     vy = shoulder[1] - hip[1]
     v = np.array([vx, vy], dtype=np.float64)
-    y_axis = np.array([0.0, -1.0], dtype=np.float64)  # 위쪽
+    y_axis = np.array([0.0, -1.0], dtype=np.float64)
     denom = (np.linalg.norm(v) * np.linalg.norm(y_axis))
     if denom == 0:
         return float("nan")
