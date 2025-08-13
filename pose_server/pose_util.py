@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import mediapipe as mp
 import cv2
 import numpy as np
@@ -7,7 +7,12 @@ import math
 mp_pose = mp.solutions.pose
 PoseLandmark = mp_pose.PoseLandmark
 
+
+# -----------------------
+# 유틸 함수
+# -----------------------
 def _calculate_angle(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, float]) -> float:
+    """세 점(a, b, c) 사이의 각도(도)"""
     a = np.array(a, dtype=np.float64)
     b = np.array(b, dtype=np.float64)
     c = np.array(c, dtype=np.float64)
@@ -21,7 +26,9 @@ def _calculate_angle(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[fl
     angle_rad = math.acos(cosine)
     return math.degrees(angle_rad)
 
+
 def _torso_incline_deg(shoulder: Tuple[float, float], hip: Tuple[float, float]) -> float:
+    """어깨→엉덩이 벡터와 수직축(위쪽) 사이의 각도(도). 0이면 곧게 선 상태."""
     vx = shoulder[0] - hip[0]
     vy = shoulder[1] - hip[1]
     v = np.array([vx, vy], dtype=np.float64)
@@ -34,6 +41,7 @@ def _torso_incline_deg(shoulder: Tuple[float, float], hip: Tuple[float, float]) 
     angle_rad = math.acos(cosine)
     return math.degrees(angle_rad)
 
+
 def _landmarks_to_list(landmarks: List[Any]) -> List[Dict[str, float]]:
     out = []
     for lm in landmarks:
@@ -45,10 +53,22 @@ def _landmarks_to_list(landmarks: List[Any]) -> List[Dict[str, float]]:
         })
     return out
 
+
 def _px(pt, img_w: int, img_h: int) -> Tuple[float, float]:
     return (pt.x * img_w, pt.y * img_h)
 
-def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
+
+# -----------------------
+# 메인 분석 함수
+# -----------------------
+def analyze_pose_and_feedback(image_bgr: np.ndarray, mode: Optional[str] = None) -> Dict[str, Any]:
+    """
+    MediaPipe Pose로 랜드마크/각도/메트릭 계산 후 피드백 생성
+    mode:
+      - None: 일반 규칙(기본)
+      - "squat": 스쿼트 전용 규칙 보강
+      - "pushup": 푸시업 전용 규칙 보강
+    """
     if image_bgr is None or image_bgr.size == 0:
         return {"ok": False, "message": "입력 이미지가 비어 있습니다."}
 
@@ -75,6 +95,7 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
     def visible(idx: PoseLandmark, thr: float = 0.5) -> bool:
         return float(lms[idx.value].visibility) >= thr
 
+    # 좌표 가져오기
     L_SH = P(PoseLandmark.LEFT_SHOULDER)
     R_SH = P(PoseLandmark.RIGHT_SHOULDER)
     L_EL = P(PoseLandmark.LEFT_ELBOW)
@@ -88,6 +109,7 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
     L_AN = P(PoseLandmark.LEFT_ANKLE)
     R_AN = P(PoseLandmark.RIGHT_ANKLE)
 
+    # 각도 계산
     angles: Dict[str, float] = {}
 
     def safe_angle(name: str, a_idx: PoseLandmark, b_idx: PoseLandmark, c_idx: PoseLandmark):
@@ -103,12 +125,14 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
     safe_angle("left_knee", PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_KNEE, PoseLandmark.LEFT_ANKLE)
     safe_angle("right_knee", PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_KNEE, PoseLandmark.RIGHT_ANKLE)
 
+    # 메트릭 계산
     torso_incline_left = _torso_incline_deg(L_SH, L_HP) if visible(PoseLandmark.LEFT_SHOULDER) and visible(PoseLandmark.LEFT_HIP) else float("nan")
     torso_incline_right = _torso_incline_deg(R_SH, R_HP) if visible(PoseLandmark.RIGHT_SHOULDER) and visible(PoseLandmark.RIGHT_HIP) else float("nan")
     torso_incline = np.nanmean([torso_incline_left, torso_incline_right])
 
     shoulder_y_diff = abs(L_SH[1] - R_SH[1]) if (visible(PoseLandmark.LEFT_SHOULDER) and visible(PoseLandmark.RIGHT_SHOULDER)) else float("nan")
 
+    # 간단한 Valgus(무릎 안짱) 판정
     valgus_tolerance = 0.06 * img_w
     left_valgus = (visible(PoseLandmark.LEFT_KNEE) and visible(PoseLandmark.LEFT_ANKLE)
                    and (L_AN[0] - L_KN[0]) < -valgus_tolerance)
@@ -120,11 +144,16 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
         "shoulder_height_diff_px": round(float(shoulder_y_diff), 2) if not math.isnan(shoulder_y_diff) else None,
         "left_knee_valgus": bool(left_valgus),
         "right_knee_valgus": bool(right_valgus),
-        "image_size": {"width": int(img_w), "height": int(img_h)}
+        "image_size": {"width": int(img_w), "height": int(img_h)},
+        "mode": mode or "default"
     }
 
+    # -----------------------
+    # 피드백 생성 (기본 + 모드별 규칙)
+    # -----------------------
     feedback: List[str] = []
 
+    # 기본(공통) 피드백
     def shoulder_msg(side: str):
         ang = angles.get(f"{side}_shoulder")
         if ang is None:
@@ -136,9 +165,6 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
         elif ang > 160:
             feedback.append(f"{'왼' if side=='left' else '오'}팔이 머리 위까지 올라갔어요 (약 {ang}°).")
 
-    shoulder_msg("left")
-    shoulder_msg("right")
-
     def elbow_msg(side: str):
         ang = angles.get(f"{side}_elbow")
         if ang is None:
@@ -147,9 +173,6 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
             feedback.append(f"{'왼' if side=='left' else '오'}팔꿈치가 많이 접혔어요 (약 {ang}°).")
         elif ang > 160:
             feedback.append(f"{'왼' if side=='left' else '오'}팔꿈치를 조금 더 접어도 좋아요 (약 {ang}°).")
-
-    elbow_msg("left")
-    elbow_msg("right")
 
     def knee_msg(side: str):
         ang = angles.get(f"{side}_knee")
@@ -160,8 +183,9 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
         elif 70 <= ang <= 120:
             feedback.append(f"{'왼' if side=='left' else '오'}무릎 각도 양호합니다 (약 {ang}°).")
 
-    knee_msg("left")
-    knee_msg("right")
+    shoulder_msg("left"); shoulder_msg("right")
+    elbow_msg("left"); elbow_msg("right")
+    knee_msg("left"); knee_msg("right")
 
     if metrics["torso_incline_deg"] is not None:
         if metrics["torso_incline_deg"] > 30:
@@ -178,6 +202,72 @@ def analyze_pose_and_feedback(image_bgr: np.ndarray) -> Dict[str, Any]:
     if metrics["right_knee_valgus"]:
         feedback.append("오른쪽 무릎이 안쪽으로 말렸어요. 무릎과 발끝 방향을 일치시키세요.")
 
+    # -----------------------
+    # 모드별 보강 규칙
+    # -----------------------
+    def within(v: Optional[float], lo: float, hi: float) -> Optional[bool]:
+        if v is None or math.isnan(v):
+            return None
+        return (lo <= v <= hi)
+
+    if mode == "squat":
+        # 스쿼트: 무릎 각도 70~120° 근처, 상체 기울기 10~35° 권장
+        lk = angles.get("left_knee"); rk = angles.get("right_knee")
+        ti = metrics["torso_incline_deg"]
+
+        ok_knee = []
+        for side, ang in (("왼", lk), ("오", rk)):
+            if ang is not None:
+                if within(ang, 70, 120):
+                    ok_knee.append(side)
+                elif ang > 140:
+                    feedback.append(f"{side}무릎이 덜 굽혀졌어요 (약 {ang}°). 앉는 깊이를 더 주세요.")
+                elif ang < 60:
+                    feedback.append(f"{side}무릎이 지나치게 접혔어요 (약 {ang}°). 무릎에 무리가 갈 수 있어요.")
+        if len(ok_knee) == 2:
+            feedback.append("양쪽 무릎 각도가 스쿼트 범위에 잘 들어왔습니다.")
+
+        if ti is not None:
+            if ti < 8:
+                feedback.append("상체가 너무 수직입니다. 엉덩이를 뒤로 빼며 약간 상체를 숙여보세요.")
+            elif ti > 40:
+                feedback.append("상체가 과도하게 숙여졌습니다. 가슴을 더 열어보세요.")
+
+    elif mode == "pushup":
+        # 푸시업: 몸통 일직선(엉덩이 각도>160°), 팔꿈치 80~110°(하강 구간 가정), 상체 기울기 과도X
+        le = angles.get("left_elbow"); re = angles.get("right_elbow")
+        lh = angles.get("left_hip"); rh = angles.get("right_hip")
+        ti = metrics["torso_incline_deg"]
+
+        # 팔꿈치
+        ok_elbow = []
+        for side, ang in (("왼", le), ("오", re)):
+            if ang is not None:
+                if within(ang, 80, 110):
+                    ok_elbow.append(side)
+                elif ang >= 150:
+                    feedback.append(f"{side}팔꿈치가 거의 펴져 있어요 (약 {ang}°). 가슴을 더 낮춰보세요.")
+                elif ang <= 60:
+                    feedback.append(f"{side}팔꿈치가 너무 접혔어요 (약 {ang}°). 어깨에 과부하가 갈 수 있어요.")
+        if len(ok_elbow) == 2:
+            feedback.append("양쪽 팔꿈치 각도가 푸시업 범위에 적절합니다.")
+
+        # 엉덩이(플랭크 라인)
+        hip_ok_count = 0
+        for side, ang in (("왼", lh), ("오", rh)):
+            if ang is not None:
+                if ang >= 160:
+                    hip_ok_count += 1
+                else:
+                    feedback.append(f"{side}쪽 엉덩이가 꺼졌거나 들렸어요 (엉덩이 각도 {ang}°). 몸통을 일직선으로 유지하세요.")
+        if hip_ok_count == 2:
+            feedback.append("몸통이 전반적으로 일직선에 가깝습니다.")
+
+        # 상체 기울기 (카메라 각도 영향 있지만 과도한 경우 보정)
+        if ti is not None and ti > 45:
+            feedback.append("상체 기울기가 커 보입니다. 팔꿈치 각도와 몸통 정렬을 다시 확인하세요.")
+
+    # 피드백이 하나도 없다면 기본 메시지
     if not feedback:
         feedback.append("기본 자세가 전반적으로 안정적입니다.")
 
