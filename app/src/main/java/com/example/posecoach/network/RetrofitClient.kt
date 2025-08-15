@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    private val client: OkHttpClient by lazy {
+    private val okHttpClient: OkHttpClient by lazy {
         val log = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
@@ -24,8 +24,8 @@ object RetrofitClient {
 
     val api: PoseApi by lazy {
         Retrofit.Builder()
-            .baseUrl(BuildConfig.POSE_SERVER_BASE_URL) // 예: http://10.0.2.2:5001/
-            .client(client)
+            .baseUrl(BuildConfig.POSE_SERVER_BASE_URL)
+            .client(okHttpClient) // ← 변수명 일치
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(PoseApi::class.java)
