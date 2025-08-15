@@ -15,6 +15,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 로컬 서버 URL을 BuildConfig에 넣어 사용 (에뮬레이터: 10.0.2.2)
+        buildConfigField "String", "POSE_SERVER_BASE_URL", "\"http://10.0.2.2:5001/\"
     }
 
     buildTypes {
@@ -45,4 +47,12 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    implementation "com.squareup.retrofit2:retrofit:2.11.0"
+    implementation "com.squareup.retrofit2:converter-gson:2.11.0"
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+    implementation "com.squareup.okhttp3:logging-interceptor:4.12.0"
+
+    // 이미지 로딩(선택)
+    implementation "io.coil-kt:coil:2.6.0"
 }
