@@ -16,8 +16,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Kotlin DSL에서는 인자들을 문자열로 넘겨야 합니다.
-        // value에는 이스케이프된 따옴표 포함: "\"http://10.0.2.2:5001/\""
+        // 서버 URL (에뮬레이터는 10.0.2.2)
         buildConfigField(
             "String",
             "POSE_SERVER_BASE_URL",
@@ -33,14 +32,10 @@ android {
                 "proguard-rules.pro"
             )
         }
-        debug {
-            // 필요시 디버그 전용 세팅
-        }
+        debug { }
     }
 
-    // 뷰바인딩 사용(예제 코드에서 viewBinding 씀)
     buildFeatures {
-        buildConfig = true
         viewBinding = true
     }
 
@@ -54,6 +49,7 @@ android {
 }
 
 dependencies {
+    // AndroidX 기본
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -69,7 +65,14 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+
     // 이미지 로딩(선택)
     implementation("io.coil-kt:coil:2.6.0")
+
+    // CameraX
+    val cameraX = "1.3.4"
+    implementation("androidx.camera:camera-core:$cameraX")
+    implementation("androidx.camera:camera-camera2:$cameraX")
+    implementation("androidx.camera:camera-lifecycle:$cameraX")
+    implementation("androidx.camera:camera-view:$cameraX") // PreviewView
 }
