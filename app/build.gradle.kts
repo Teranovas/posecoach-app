@@ -40,6 +40,7 @@ android {
 
     // 뷰바인딩 사용(예제 코드에서 viewBinding 씀)
     buildFeatures {
+        buildConfig = true
         viewBinding = true
     }
 
