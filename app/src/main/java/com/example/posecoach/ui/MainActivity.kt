@@ -1,21 +1,107 @@
 package com.example.posecoach.ui
 
+import com.example.posecoach.ui.PoseViewModel
+import com.example.posecoach.ui.UiState
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
+import android.widget.ArrayAdapter
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import com.example.posecoach.R
+import coil.load
+import com.example.posecoach.databinding.ActivityMainBinding
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var b: ActivityMainBinding
+    private val vm: PoseViewModel by viewModels()
+
+    private var pickedFile: File? = null
+
+    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            val file = copyUriToCache(uri)
+            pickedFile = file
+            b.imageView.load(file)
+            b.resultText.text = "이미지 선택 완료: ${file.name}"
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        b = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(b.root)
+
+        // 모드 스피너
+        val modes = listOf("default(빈값)", "squat", "pushup")
+        b.modeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
+
+        b.btnPick.setOnClickListener { pickImage.launch("image/*") }
+
+        b.btnSendSimple.setOnClickListener {
+            val f = pickedFile ?: return@setOnClickListener
+            val mode = spinnerModeOrNull()
+            vm.analyzeSimple(f, mode)
         }
+
+        b.btnSendFull.setOnClickListener {
+            val f = pickedFile ?: return@setOnClickListener
+            val mode = spinnerModeOrNull()
+            vm.analyzeFull(f, mode)
+        }
+
+        b.btnOverlay.setOnClickListener {
+            val f = pickedFile ?: return@setOnClickListener
+            val mode = spinnerModeOrNull()
+            vm.overlay(f, mode)
+        }
+
+        vm.state.observe(this) { state ->
+            when (state) {
+                is UiState.Idle -> Unit
+                is UiState.Loading -> {
+                    b.resultText.text = "요청 중..."
+                }
+                is UiState.SimpleOk -> {
+                    b.resultText.text = "pose=${state.data.pose}\nfeedback=${state.data.feedback}\nscore=${state.data.score}"
+                }
+                is UiState.FullOk -> {
+                    b.resultText.text = buildString {
+                        append("ok=${state.data.ok}\n")
+                        append("feedback=${state.data.feedback?.joinToString(" / ")}\n")
+                        append("angles=${state.data.angles}\n")
+                        append("metrics=${state.data.metrics}\n")
+                    }
+                }
+                is UiState.OverlayOk -> {
+                    val bmp = BitmapFactory.decodeByteArray(state.bytes, 0, state.bytes.size)
+                    b.imageView.setImageBitmap(bmp)
+                    b.resultText.text = "오버레이 수신 완료 (PNG)"
+                }
+                is UiState.Error -> {
+                    b.resultText.text = "에러: ${state.message}"
+                }
+            }
+        }
+    }
+
+    private fun spinnerModeOrNull(): String? {
+        val sel = b.modeSpinner.selectedItem?.toString() ?: return null
+        return when {
+            sel.startsWith("default") -> null
+            else -> sel
+        }
+    }
+
+    private fun copyUriToCache(uri: Uri): File {
+        val input = contentResolver.openInputStream(uri)!!
+        val outFile = File(cacheDir, "picked_${System.currentTimeMillis()}.jpg")
+        FileOutputStream(outFile).use { out ->
+            input.copyTo(out)
+        }
+        return outFile
     }
 }
