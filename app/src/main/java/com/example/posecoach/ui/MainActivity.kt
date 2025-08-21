@@ -1,7 +1,6 @@
 package com.example.posecoach.ui
 
-import com.example.posecoach.ui.PoseViewModel
-import com.example.posecoach.ui.UiState
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -41,6 +40,10 @@ class MainActivity : AppCompatActivity() {
 
         b.btnPick.setOnClickListener { pickImage.launch("image/*") }
 
+        b.btnCamera.setOnClickListener {
+            startActivity(Intent(this, CameraActivity::class.java))
+        }
+
         b.btnSendSimple.setOnClickListener {
             val f = pickedFile ?: return@setOnClickListener
             val mode = spinnerModeOrNull()
@@ -62,9 +65,7 @@ class MainActivity : AppCompatActivity() {
         vm.state.observe(this) { state ->
             when (state) {
                 is UiState.Idle -> Unit
-                is UiState.Loading -> {
-                    b.resultText.text = "요청 중..."
-                }
+                is UiState.Loading -> { b.resultText.text = "요청 중..." }
                 is UiState.SimpleOk -> {
                     b.resultText.text = "pose=${state.data.pose}\nfeedback=${state.data.feedback}\nscore=${state.data.score}"
                 }
@@ -81,27 +82,20 @@ class MainActivity : AppCompatActivity() {
                     b.imageView.setImageBitmap(bmp)
                     b.resultText.text = "오버레이 수신 완료 (PNG)"
                 }
-                is UiState.Error -> {
-                    b.resultText.text = "에러: ${state.message}"
-                }
+                is UiState.Error -> { b.resultText.text = "에러: ${state.message}" }
             }
         }
     }
 
     private fun spinnerModeOrNull(): String? {
         val sel = b.modeSpinner.selectedItem?.toString() ?: return null
-        return when {
-            sel.startsWith("default") -> null
-            else -> sel
-        }
+        return if (sel.startsWith("default")) null else sel
     }
 
     private fun copyUriToCache(uri: Uri): File {
         val input = contentResolver.openInputStream(uri)!!
         val outFile = File(cacheDir, "picked_${System.currentTimeMillis()}.jpg")
-        FileOutputStream(outFile).use { out ->
-            input.copyTo(out)
-        }
+        FileOutputStream(outFile).use { out -> input.copyTo(out) }
         return outFile
     }
 }

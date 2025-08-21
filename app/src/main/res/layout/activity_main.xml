@@ -33,11 +33,11 @@
             android:text="이미지 선택"/>
 
         <Button
-            android:id="@+id/btnSendSimple"
+            android:id="@+id/btnCamera"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="전송(simple)"/>
+            android:text="카메라 촬영"/>
     </LinearLayout>
 
     <LinearLayout
@@ -47,19 +47,26 @@
         android:layout_height="wrap_content">
 
         <Button
+            android:id="@+id/btnSendSimple"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="전송(simple)"/>
+
+        <Button
             android:id="@+id/btnSendFull"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="전송(full)"/>
-
-        <Button
-            android:id="@+id/btnOverlay"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="오버레이(PNG)"/>
     </LinearLayout>
+
+    <Button
+        android:id="@+id/btnOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="오버레이(PNG)"/>
 
     <TextView
         android:id="@+id/resultText"
