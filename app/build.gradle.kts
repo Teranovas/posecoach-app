@@ -70,6 +70,10 @@ dependencies {
     // 이미지 로딩(선택)
     implementation("io.coil-kt:coil:2.6.0")
 
+    implementation(platform("androidx.lifecycle:lifecycle-bom:2.8.4")) // ✅ 버전 정렬
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     // CameraX
     val cameraX = "1.3.4"
     implementation("androidx.camera:camera-core:$cameraX")
