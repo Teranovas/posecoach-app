@@ -5,28 +5,24 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.widget.ArrayAdapter
-import androidx.activity.R
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import coil.load
+import com.example.posecoach.R            // ✅ 앱 R 로 교체
 import com.example.posecoach.databinding.ActivityMainBinding
-import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var b: ActivityMainBinding
-    private val vm: PoseViewModel by viewModels()
+    private val vm: PoseViewModel by viewModels()   // ✅ vm 으로 통일
 
-    private var pickedFile: File? = null
+    private var pickedFile: java.io.File? = null
 
-
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    private val pickImage = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
         if (uri != null) {
             val file = copyUriToCache(uri)
             pickedFile = file
@@ -42,21 +38,14 @@ class MainActivity : AppCompatActivity() {
 
         // 모드 스피너
         val modes = listOf("default(빈값)", "squat", "pushup")
-        b.modeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
+        b.modeSpinner.adapter =
+            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
 
+        // 피드백 리스트 UI
+        b.rvFeedback.layoutManager = LinearLayoutManager(this)
+
+        // 버튼들
         b.btnPick.setOnClickListener { pickImage.launch("image/*") }
-
-        val rvFeedback = findViewById<RecyclerView>(R.id.rvFeedback)
-        rvFeedback.layoutManager = LinearLayoutManager(this)
-
-        lifecycleScope.launch {
-            viewModel.uiState.collectLatest { state ->
-                if (state is UiState.Success) {
-                    val adapter = FeedbackAdapter(state.feedback ?: emptyList())
-                    rvFeedback.adapter = adapter
-                }
-            }
-        }
 
         b.btnCamera.setOnClickListener {
             startActivity(Intent(this, CameraActivity::class.java))
@@ -80,17 +69,28 @@ class MainActivity : AppCompatActivity() {
             vm.overlay(f, mode)
         }
 
+        // 상태 관찰 (LiveData)
         vm.state.observe(this) { state ->
             when (state) {
-                is UiState.Idle -> Unit
-                is UiState.Loading -> { b.resultText.text = "요청 중..." }
+                is UiState.Idle -> {
+                    // 필요 시 초기화 UI
+                }
+                is UiState.Loading -> {
+                    b.resultText.text = "요청 중..."
+                }
                 is UiState.SimpleOk -> {
-                    b.resultText.text = "pose=${state.data.pose}\nfeedback=${state.data.feedback}\nscore=${state.data.score}"
+                    // Simple: feedback 이 String? 이므로 리스트로 변환
+                    val items = listOfNotNull(state.data.feedback)
+                    b.rvFeedback.adapter = FeedbackAdapter(items)
+                    b.resultText.text =
+                        "pose=${state.data.pose}\nfeedback=${state.data.feedback}\nscore=${state.data.score}"
                 }
                 is UiState.FullOk -> {
+                    val items = state.data.feedback ?: emptyList()
+                    b.rvFeedback.adapter = FeedbackAdapter(items)
                     b.resultText.text = buildString {
                         append("ok=${state.data.ok}\n")
-                        append("feedback=${state.data.feedback?.joinToString(" / ")}\n")
+                        append("feedback=${items.joinToString(" / ")}\n")
                         append("angles=${state.data.angles}\n")
                         append("metrics=${state.data.metrics}\n")
                     }
@@ -99,8 +99,13 @@ class MainActivity : AppCompatActivity() {
                     val bmp = BitmapFactory.decodeByteArray(state.bytes, 0, state.bytes.size)
                     b.imageView.setImageBitmap(bmp)
                     b.resultText.text = "오버레이 수신 완료 (PNG)"
+                    // overlay는 피드백이 없을 수 있음
+                    b.rvFeedback.adapter = FeedbackAdapter(emptyList())
                 }
-                is UiState.Error -> { b.resultText.text = "에러: ${state.message}" }
+                is UiState.Error -> {
+                    b.resultText.text = "에러: ${state.message}"
+                    b.rvFeedback.adapter = FeedbackAdapter(emptyList())
+                }
             }
         }
     }
@@ -110,10 +115,10 @@ class MainActivity : AppCompatActivity() {
         return if (sel.startsWith("default")) null else sel
     }
 
-    private fun copyUriToCache(uri: Uri): File {
+    private fun copyUriToCache(uri: Uri): java.io.File {
         val input = contentResolver.openInputStream(uri)!!
-        val outFile = File(cacheDir, "picked_${System.currentTimeMillis()}.jpg")
-        FileOutputStream(outFile).use { out -> input.copyTo(out) }
+        val outFile = java.io.File(cacheDir, "picked_${System.currentTimeMillis()}.jpg")
+        java.io.FileOutputStream(outFile).use { out -> input.copyTo(out) }
         return outFile
     }
 }
