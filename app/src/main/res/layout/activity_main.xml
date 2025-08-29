@@ -38,6 +38,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="카메라 촬영"/>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchTts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TTS 음성안내"
+            android:checked="false"
+            android:layout_marginTop="8dp"/>
     </LinearLayout>
 
     <LinearLayout
@@ -84,4 +92,6 @@
         android:overScrollMode="never"
         android:nestedScrollingEnabled="false"
         android:layout_marginTop="8dp"/>
+
+
 </LinearLayout>
