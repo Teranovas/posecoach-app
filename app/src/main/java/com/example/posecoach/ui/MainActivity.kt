@@ -5,11 +5,16 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.widget.ArrayAdapter
+import androidx.activity.R
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.posecoach.databinding.ActivityMainBinding
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
@@ -19,6 +24,7 @@ class MainActivity : AppCompatActivity() {
     private val vm: PoseViewModel by viewModels()
 
     private var pickedFile: File? = null
+
 
     private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
@@ -39,6 +45,18 @@ class MainActivity : AppCompatActivity() {
         b.modeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, modes)
 
         b.btnPick.setOnClickListener { pickImage.launch("image/*") }
+
+        val rvFeedback = findViewById<RecyclerView>(R.id.rvFeedback)
+        rvFeedback.layoutManager = LinearLayoutManager(this)
+
+        lifecycleScope.launch {
+            viewModel.uiState.collectLatest { state ->
+                if (state is UiState.Success) {
+                    val adapter = FeedbackAdapter(state.feedback ?: emptyList())
+                    rvFeedback.adapter = adapter
+                }
+            }
+        }
 
         b.btnCamera.setOnClickListener {
             startActivity(Intent(this, CameraActivity::class.java))
