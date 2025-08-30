@@ -129,6 +129,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         return outFile
     }
 
+    private fun speakIfEnabled(text: String) {
+        if (!b.switchTts.isChecked) return
+        if (!ttsReady) return
+        if (text.isBlank()) return
+        // QUEUE_FLUSH: 직전 발화를 끊고 바로 재생
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "POSE_FEEDBACK")
+    }
+
     override fun onInit(status: Int) {
         ttsReady = (status == TextToSpeech.SUCCESS)
         if (ttsReady) {
@@ -142,5 +150,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             tts?.setSpeechRate(1.0f)
             tts?.setPitch(1.0f)
         }
+    }
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        super.onDestroy()
     }
 }
