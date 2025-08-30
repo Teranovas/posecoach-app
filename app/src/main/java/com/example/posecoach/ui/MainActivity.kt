@@ -130,6 +130,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onInit(status: Int) {
-        TODO("Not yet implemented")
+        ttsReady = (status == TextToSpeech.SUCCESS)
+        if (ttsReady) {
+            // 한국어 설정 (미지원 단말이면 기본 로케일)
+            val ok = tts?.setLanguage(Locale.KOREAN)
+            if (ok == TextToSpeech.LANG_MISSING_DATA || ok == TextToSpeech.LANG_NOT_SUPPORTED) {
+                // 한국어 미지원 시 시스템 기본으로 폴백
+                tts?.language = Locale.getDefault()
+            }
+            // 읽기 속도/피치 약간 안정화
+            tts?.setSpeechRate(1.0f)
+            tts?.setPitch(1.0f)
+        }
     }
 }
