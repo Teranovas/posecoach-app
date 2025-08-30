@@ -105,6 +105,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         append("angles=${state.data.angles}\n")
                         append("metrics=${state.data.metrics}\n")
                     }
+
+                    if (items.isNotEmpty()) speakIfEnabled(items.first())
                 }
                 is UiState.OverlayOk -> {
                     val bmp = BitmapFactory.decodeByteArray(state.bytes, 0, state.bytes.size)
