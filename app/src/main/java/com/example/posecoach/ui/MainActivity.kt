@@ -43,6 +43,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         tts = TextToSpeech(this, this)
 
+
+
         // 모드 스피너
         val modes = listOf("default(빈값)", "squat", "pushup")
         b.modeSpinner.adapter =
@@ -91,6 +93,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     b.rvFeedback.adapter = FeedbackAdapter(items)
                     b.resultText.text =
                         "pose=${state.data.pose}\nfeedback=${state.data.feedback}\nscore=${state.data.score}"
+
+                    if (items.isNotEmpty()) speakIfEnabled(items.first())
                 }
                 is UiState.FullOk -> {
                     val items = state.data.feedback ?: emptyList()
