@@ -12,13 +12,18 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
 import com.example.posecoach.R            // ✅ 앱 R 로 교체
 import com.example.posecoach.databinding.ActivityMainBinding
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var b: ActivityMainBinding
     private val vm: PoseViewModel by viewModels()   // ✅ vm 으로 통일
 
     private var pickedFile: java.io.File? = null
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
 
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -35,6 +40,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
+
+        tts = TextToSpeech(this, this)
 
         // 모드 스피너
         val modes = listOf("default(빈값)", "squat", "pushup")
@@ -120,5 +127,9 @@ class MainActivity : AppCompatActivity() {
         val outFile = java.io.File(cacheDir, "picked_${System.currentTimeMillis()}.jpg")
         java.io.FileOutputStream(outFile).use { out -> input.copyTo(out) }
         return outFile
+    }
+
+    override fun onInit(status: Int) {
+        TODO("Not yet implemented")
     }
 }
