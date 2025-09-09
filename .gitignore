@@ -1,0 +1,70 @@
+<<<<<<< HEAD
+# Android
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+build/
+*.apk
+
+# Python
+__pycache__/
+*.pyc
+.env
+.venv
+venv/
+=======
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+>>>>>>> 1609154 (chore: init Android app (Retrofit + MVVM + UI))
+# === Android/Gradle ===
+*.iml
+.gradle/
+.idea/
+local.properties
+.DS_Store
+build/
+captures/
+.cxx/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Large/Binary files (GitHub 100MB 제한 대비) ===
+*.apk
+*.aab
+*.mp4
+*.avi
+*.mov
+*.zip
+*.tar
+*.gz
+*.pt
+*.onnx
+
+# === Jupyter / VSCode ===
+.vscode/
+*.log
+
+# === Custom ===
+assets/*.mp4
+assets/*.movvenv/
+__pycache__/
+*.pt
+*.apk
+*.aab
