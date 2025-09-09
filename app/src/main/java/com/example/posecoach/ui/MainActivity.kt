@@ -81,21 +81,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         // 상태 관찰 (LiveData)
         vm.state.observe(this) { state ->
             when (state) {
-                is UiState.Idle -> {
-                    // 필요 시 초기화 UI
-                }
-                is UiState.Loading -> {
-                    b.resultText.text = "요청 중..."
-                }
+                is UiState.Idle -> Unit
+                is UiState.Loading -> { b.resultText.text = "요청 중..." }
+
+                // 🔽 여기 교체
                 is UiState.SimpleOk -> {
-                    // Simple: feedback 이 String? 이므로 리스트로 변환
                     val items = listOfNotNull(state.data.feedback)
                     b.rvFeedback.adapter = FeedbackAdapter(items)
                     b.resultText.text =
                         "pose=${state.data.pose}\nfeedback=${state.data.feedback}\nscore=${state.data.score}"
 
-                    if (items.isNotEmpty()) speakIfEnabled(items.first())
+                    if (items.isNotEmpty()) speakIfEnabled(items.first()) // ✅ TTS
                 }
+
                 is UiState.FullOk -> {
                     val items = state.data.feedback ?: emptyList()
                     b.rvFeedback.adapter = FeedbackAdapter(items)
@@ -106,8 +104,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         append("metrics=${state.data.metrics}\n")
                     }
 
-                    if (items.isNotEmpty()) speakIfEnabled(items.first())
+                    if (items.isNotEmpty()) speakIfEnabled(items.first()) // ✅ TTS
                 }
+                // 🔼 여기까지 교체
+
                 is UiState.OverlayOk -> {
                     val bmp = BitmapFactory.decodeByteArray(state.bytes, 0, state.bytes.size)
                     b.imageView.setImageBitmap(bmp)
