@@ -115,3 +115,6 @@ posecoach/
     - Overlay → 오버레이 PNG
     - TTS 스위치 → 피드백 음성 안내
 
+
+## 실행결과
+
