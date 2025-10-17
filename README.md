@@ -93,7 +93,8 @@ posecoach/
 
   - 서버 실행
   ```bash
-  python app.py
+  cd ~/PoseCoach
+  python -m pose_server.app
   서버 기본 포트: 5001
   ```
 
